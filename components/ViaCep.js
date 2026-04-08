@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import {
   Text,
@@ -8,23 +8,24 @@ import {
   Card,
   HelperText,
   Menu,
-  Divider,
 } from 'react-native-paper';
+import { inserirUsuario, updateUsuario } from '../database/database';
 
-export default function ViaCep() {
+export default function ViaCep({ voltar, usuarioEditando, finalizarEdicao }) {
+
   const estados = [
-    'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES',
-    'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR',
-    'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC',
-    'SP', 'SE', 'TO'
+    'AC','AL','AP','AM','BA','CE','DF','ES',
+    'GO','MA','MT','MS','MG','PA','PB','PR',
+    'PE','PI','RJ','RN','RS','RO','RR','SC',
+    'SP','SE','TO'
   ];
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [erroCep, setErroCep] = useState('');
 
-  // objeto com todos os campos editáveis
   const [dados, setDados] = useState({
+    nome: '',
     cep: '',
     logradouro: '',
     numero: '',
@@ -34,7 +35,22 @@ export default function ViaCep() {
     estado: '',
   });
 
-  // função genérica para alterar qualquer campo
+  // 🔥 PREENCHER CAMPOS AO EDITAR
+  useEffect(() => {
+    if (usuarioEditando) {
+      setDados({
+        nome: usuarioEditando.NOME_US,
+        cep: usuarioEditando.CEP_US,
+        logradouro: usuarioEditando.LOGRADOURO_US,
+        numero: usuarioEditando.NUMERO_US,
+        complemento: usuarioEditando.COMPLEMENTO_US,
+        bairro: usuarioEditando.BAIRRO_US,
+        cidade: usuarioEditando.CIDADE_US,
+        estado: usuarioEditando.ESTADO_US,
+      });
+    }
+  }, [usuarioEditando]);
+
   const alterarCampo = (campo, valor) => {
     setDados((prev) => ({
       ...prev,
@@ -42,11 +58,24 @@ export default function ViaCep() {
     }));
   };
 
+  const limparFormulario = () => {
+    setDados({
+      nome: '',
+      cep: '',
+      logradouro: '',
+      numero: '',
+      complemento: '',
+      bairro: '',
+      cidade: '',
+      estado: '',
+    });
+  };
+
   const buscarCep = async () => {
     const cepLimpo = dados.cep.replace(/\D/g, '');
 
     if (cepLimpo.length !== 8) {
-      setErroCep('Digite um CEP válido com 8 números.');
+      setErroCep('Digite um CEP válido.');
       return;
     }
 
@@ -58,107 +87,142 @@ export default function ViaCep() {
       const data = await response.json();
 
       if (data.erro) {
-        setErroCep('CEP não encontrado.');
+        setErroCep('CEP inválido.');
         return;
       }
 
       setDados((prev) => ({
         ...prev,
-        cep: data.cep || prev.cep,
-        logradouro: data.logradouro || '',
-        numero: prev.numero || '',
-        complemento: data.complemento || '',
-        bairro: data.bairro || '',
-        cidade: data.localidade || '',
-        estado: data.uf || '',
+        cep: data.cep,
+        logradouro: data.logradouro,
+        complemento: data.complemento,
+        bairro: data.bairro,
+        cidade: data.localidade,
+        estado: data.uf,
       }));
+
     } catch (error) {
-      setErroCep('Erro ao buscar o CEP. Tente novamente.');
-      console.log(error);
+      setErroCep('Erro ao buscar CEP');
     } finally {
       setLoading(false);
     }
   };
 
-  const cadastrar = () => {
-    console.log('Dados cadastrados:', dados);
-    alert('Cadastro realizado com sucesso!');
+  // 🔥 FUNÇÃO FINAL (INSERT + UPDATE)
+  const salvar = async () => {
+
+    if (!dados.nome.trim()) {
+      alert('Digite o nome');
+      return;
+    }
+
+    try {
+
+      if (usuarioEditando) {
+        await updateUsuario(
+          usuarioEditando.ID_US,
+          dados.nome,
+          dados.cep,
+          dados.logradouro,
+          dados.numero,
+          dados.complemento,
+          dados.bairro,
+          dados.cidade,
+          dados.estado
+        );
+
+        alert('Atualizado com sucesso!');
+        finalizarEdicao();
+
+      } else {
+        await inserirUsuario(
+          dados.nome,
+          dados.cep,
+          dados.logradouro,
+          dados.numero,
+          dados.complemento,
+          dados.bairro,
+          dados.cidade,
+          dados.estado
+        );
+
+        alert('Cadastrado com sucesso!');
+      }
+
+      limparFormulario();
+
+    } catch (error) {
+      console.log(error);
+      alert('Erro ao salvar');
+    }
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Card style={styles.card} mode="contained">
+      <Card style={styles.card}>
         <Card.Content>
-          <Text variant="headlineSmall" style={styles.titulo}>
-            Consulta ViaCEP
+
+          <Text style={styles.titulo}>
+            {usuarioEditando ? 'Editar Usuário' : 'Cadastro de Usuário'}
           </Text>
+
+          <Button mode="outlined" onPress={voltar} style={styles.botaoVoltar}>
+            Voltar
+          </Button>
+
+          <TextInput
+            label="Nome"
+            mode="outlined"
+            value={dados.nome}
+            onChangeText={(text) => alterarCampo('nome', text)}
+            style={styles.input}
+          />
 
           <TextInput
             label="CEP"
             mode="outlined"
             value={dados.cep}
             onChangeText={(text) => alterarCampo('cep', text)}
-            keyboardType="numeric"
             style={styles.input}
           />
+
           <HelperText type="error" visible={!!erroCep}>
             {erroCep}
           </HelperText>
 
-          <Button
-            mode="contained"
-            onPress={buscarCep}
-            style={styles.botaoBuscar}
-          >
+          <Button mode="contained" onPress={buscarCep}>
             Buscar CEP
           </Button>
 
-          {loading && (
-            <ActivityIndicator
-              animating={true}
-              size="large"
-              style={styles.loading}
-            />
-          )}
+          {loading && <ActivityIndicator style={styles.loading} />}
 
-          <TextInput
-            label="Logradouro"
-            mode="outlined"
+          <TextInput label="Logradouro" mode="outlined"
             value={dados.logradouro}
-            onChangeText={(text) => alterarCampo('logradouro', text)}
+            onChangeText={(t) => alterarCampo('logradouro', t)}
             style={styles.input}
           />
 
-          <TextInput
-            label="Número"
-            mode="outlined"
+          <TextInput label="Número" mode="outlined"
             value={dados.numero}
-            onChangeText={(text) => alterarCampo('numero', text)}
-            keyboardType="numeric"
+            onChangeText={(t) => alterarCampo('numero', t)}
             style={styles.input}
           />
 
-          <TextInput
-            label="Complemento"
-            mode="outlined"
+          <TextInput label="Complemento" mode="outlined"
             value={dados.complemento}
-            onChangeText={(text) => alterarCampo('complemento', text)}
+            onChangeText={(t) => alterarCampo('complemento', t)}
             style={styles.input}
           />
 
-          <TextInput
-            label="Bairro"
-            mode="outlined"
+          <TextInput label="Bairro" mode="outlined"
             value={dados.bairro}
-            onChangeText={(text) => alterarCampo('bairro', text)}
+            onChangeText={(t) => alterarCampo('bairro', t)}
             style={styles.input}
           />
 
-          <TextInput
-            label="Cidade"
-            mode="outlined"
+          <TextInput label="Cidade" mode="outlined"
             value={dados.cidade}
-            onChangeText={(text) => alterarCampo('cidade', text)}
+            onChangeText={(t) => alterarCampo('cidade', t)}
             style={styles.input}
           />
 
@@ -166,37 +230,31 @@ export default function ViaCep() {
             visible={menuVisible}
             onDismiss={() => setMenuVisible(false)}
             anchor={
-              <Button
-                mode="outlined"
-                onPress={() => setMenuVisible(true)}
-                style={styles.input}
-                contentStyle={styles.menuButtonContent}
-              >
-                {dados.estado ? `Estado: ${dados.estado}` : 'Selecione o Estado'}
+              <Button onPress={() => setMenuVisible(true)}>
+                {dados.estado || 'Selecionar Estado'}
               </Button>
             }
           >
-            {estados.map((uf, index) => (
-              <View key={index}>
-                <Menu.Item
-                  onPress={() => {
-                    alterarCampo('estado', uf);
-                    setMenuVisible(false);
-                  }}
-                  title={uf}
-                />
-                <Divider />
-              </View>
+            {estados.map((uf) => (
+              <Menu.Item
+                key={uf}
+                title={uf}
+                onPress={() => {
+                  alterarCampo('estado', uf);
+                  setMenuVisible(false);
+                }}
+              />
             ))}
           </Menu>
 
           <Button
             mode="contained"
-            onPress={cadastrar}
+            onPress={salvar}
             style={styles.botaoCadastrar}
           >
-            Cadastrar
+            {usuarioEditando ? 'Atualizar' : 'Cadastrar'}
           </Button>
+
         </Card.Content>
       </Card>
     </ScrollView>
@@ -206,34 +264,29 @@ export default function ViaCep() {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    justifyContent: 'center',
     padding: 16,
     backgroundColor: '#f5f5f5',
   },
   card: {
     borderRadius: 16,
-    paddingVertical: 8,
+    padding: 10,
   },
   titulo: {
     textAlign: 'center',
+    fontSize: 18,
     marginBottom: 20,
     fontWeight: 'bold',
   },
   input: {
-    marginBottom: 12,
-  },
-  botaoBuscar: {
-    marginBottom: 16,
-    marginTop: 4,
+    marginBottom: 10,
   },
   botaoCadastrar: {
     marginTop: 20,
   },
-  loading: {
-    marginVertical: 16,
+  botaoVoltar: {
+    marginBottom: 10,
   },
-  menuButtonContent: {
-    justifyContent: 'flex-start',
-    height: 50,
+  loading: {
+    marginVertical: 10,
   },
 });

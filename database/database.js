@@ -2,7 +2,6 @@ import * as SQLite from 'expo-sqlite';
 
 let db = null;
 
-// abrir banco
 export async function Banco() {
   if (!db) {
     db = await SQLite.openDatabaseAsync('FatecV');
@@ -11,7 +10,6 @@ export async function Banco() {
   return db;
 }
 
-// criar tabela
 export async function createTable() {
   try {
     const database = await Banco();
@@ -22,112 +20,53 @@ export async function createTable() {
       CREATE TABLE IF NOT EXISTS USUARIO (
         ID_US INTEGER PRIMARY KEY AUTOINCREMENT,
         NOME_US TEXT,
+        PRODUTO_US TEXT,
         CEP_US TEXT,
         LOGRADOURO_US TEXT,
         NUMERO_US TEXT,
         COMPLEMENTO_US TEXT,
         BAIRRO_US TEXT,
         CIDADE_US TEXT,
-        ESTADO_US TEXT
+        ESTADO_US TEXT,
+        STATUS_US TEXT
       );
     `);
 
-    console.log('Tabela USUARIO criada com sucesso!');
+    await database.execAsync(`
+      ALTER TABLE USUARIO ADD COLUMN PRODUTO_US TEXT;
+    `).catch(() => {});
+
+    await database.execAsync(`
+      ALTER TABLE USUARIO ADD COLUMN STATUS_US TEXT;
+    `).catch(() => {});
+
+    console.log('Tabela USUARIO criada/atualizada com sucesso!');
   } catch (error) {
-    console.log('Erro ao criar tabela:', error);
+    console.log('Erro ao criar/atualizar tabela:', error);
   }
 }
 
-// inserir usuário
 export async function inserirUsuario(
   nome,
+  produto,
   cep,
   logradouro,
   numero,
   complemento,
   bairro,
   cidade,
-  estado
+  estado,
+  status
 ) {
   try {
     const database = await Banco();
 
     await database.runAsync(
       `INSERT INTO USUARIO
-      (NOME_US, CEP_US, LOGRADOURO_US, NUMERO_US, COMPLEMENTO_US, BAIRRO_US, CIDADE_US, ESTADO_US)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      (NOME_US, PRODUTO_US, CEP_US, LOGRADOURO_US, NUMERO_US, COMPLEMENTO_US, BAIRRO_US, CIDADE_US, ESTADO_US, STATUS_US)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       nome,
-      cep,
-      logradouro,
-      numero,
-      complemento,
-      bairro,
-      cidade,
-      estado
-    );
-
-    console.log('Usuário inserido com sucesso!');
-  } catch (error) {
-    console.log('Erro ao inserir usuário:', error);
-  }
-}
-
-// listar usuários
-export async function selectUsuarios() {
-  try {
-    const database = await Banco();
-    const resultado = await database.getAllAsync('SELECT * FROM USUARIO');
-    console.log('Usuários encontrados!');
-    return resultado;
-  } catch (error) {
-    console.log('Erro ao listar usuários:', error);
-    return [];
-  }
-}
-
-// buscar usuário por id
-export async function selectUsuarioId(id) {
-  try {
-    const database = await Banco();
-    const resultado = await database.getFirstAsync(
-      'SELECT * FROM USUARIO WHERE ID_US = ?',
-      id
-    );
-    console.log('Usuário encontrado!');
-    return resultado;
-  } catch (error) {
-    console.log('Erro ao buscar usuário:', error);
-    return null;
-  }
-}
-
-// atualizar usuário
-export async function updateUsuario(
-  id,
-  nome,
-  cep,
-  logradouro,
-  numero,
-  complemento,
-  bairro,
-  cidade,
-  estado
-) {
-  try {
-    const database = await Banco();
-
-    await database.runAsync(
-      `UPDATE USUARIO SET
-        NOME_US = ?,
-        CEP_US = ?,
-        LOGRADOURO_US = ?,
-        NUMERO_US = ?,
-        COMPLEMENTO_US = ?,
-        BAIRRO_US = ?,
-        CIDADE_US = ?,
-        ESTADO_US = ?
-      WHERE ID_US = ?`,
-      nome,
+      produto,
       cep,
       logradouro,
       numero,
@@ -135,22 +74,96 @@ export async function updateUsuario(
       bairro,
       cidade,
       estado,
-      id
+      status
     );
 
-    console.log('Usuário atualizado com sucesso!');
+    console.log('Entrega inserida com sucesso!');
   } catch (error) {
-    console.log('Erro ao atualizar usuário:', error);
+    console.log('Erro ao inserir entrega:', error);
   }
 }
 
-// deletar usuário
+export async function selectUsuarios() {
+  try {
+    const database = await Banco();
+    const resultado = await database.getAllAsync('SELECT * FROM USUARIO');
+    console.log('Entregas encontradas!');
+    return resultado;
+  } catch (error) {
+    console.log('Erro ao listar entregas:', error);
+    return [];
+  }
+}
+
+export async function selectUsuarioId(id) {
+  try {
+    const database = await Banco();
+    const resultado = await database.getFirstAsync(
+      'SELECT * FROM USUARIO WHERE ID_US = ?',
+      id
+    );
+    console.log('Entrega encontrada!');
+    return resultado;
+  } catch (error) {
+    console.log('Erro ao buscar entrega:', error);
+    return null;
+  }
+}
+
+export async function updateUsuario(
+  id,
+  nome,
+  produto,
+  cep,
+  logradouro,
+  numero,
+  complemento,
+  bairro,
+  cidade,
+  estado,
+  status
+) {
+  try {
+    const database = await Banco();
+
+    await database.runAsync(
+      `UPDATE USUARIO SET
+        NOME_US = ?,
+        PRODUTO_US = ?,
+        CEP_US = ?,
+        LOGRADOURO_US = ?,
+        NUMERO_US = ?,
+        COMPLEMENTO_US = ?,
+        BAIRRO_US = ?,
+        CIDADE_US = ?,
+        ESTADO_US = ?,
+        STATUS_US = ?
+      WHERE ID_US = ?`,
+      nome,
+      produto,
+      cep,
+      logradouro,
+      numero,
+      complemento,
+      bairro,
+      cidade,
+      estado,
+      status,
+      id
+    );
+
+    console.log('Entrega atualizada com sucesso!');
+  } catch (error) {
+    console.log('Erro ao atualizar entrega:', error);
+  }
+}
+
 export async function deletaUsuario(id) {
   try {
     const database = await Banco();
     await database.runAsync('DELETE FROM USUARIO WHERE ID_US = ?', id);
-    console.log('Usuário deletado com sucesso!');
+    console.log('Entrega deletada com sucesso!');
   } catch (error) {
-    console.log('Erro ao deletar usuário:', error);
+    console.log('Erro ao deletar entrega:', error);
   }
 }
